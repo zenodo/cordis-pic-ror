@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cordis-pic-ror · current numbers</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site">
+  <div class="inner">
+    <a class="brand" href="index.html">cordis-pic-ror</a>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="curation.html">Curation</a>
+      <a href="data.html">Numbers</a>
+    </nav>
+    <a class="gh" href="https://github.com/zenodo/cordis-pic-ror" target="_blank" rel="noopener">github →</a>
+  </div>
+</header>
+
+<main>
+
+<section class="hero">
+  <h1>Current numbers</h1>
+  <p class="lede">
+    Live state from the most recent pipeline build baked into
+    <code>data.js</code>. To refresh after a re-run:
+    <code>just pipeline &amp;&amp; just export &amp;&amp; just review-queue &amp;&amp; just docs</code>.
+  </p>
+</section>
+
+<div data-stats class="grid-3"></div>
+
+<h2>Pipeline tables</h2>
+<p>
+  Row counts in the canonical SQLite, grouped by where the rows came from
+  (raw imports, derived match candidates, final resolutions).
+</p>
+<div data-table-counts></div>
+
+<h2>Resolution confidence</h2>
+<div data-confidence-bar></div>
+
+<h2>How much coverage do you get from curating top-N?</h2>
+<p>
+  CORDIS participation is heavy-tailed. The chart below plots cumulative
+  appearance coverage (% of all unresolved appearances) against the number
+  of top entries you curate, on a log-scale x-axis. Drag the slider to
+  pick a depth; the readout below says exactly what landing those entries
+  in <code>pic_ror_overrides.yaml</code> would buy you.
+</p>
+
+<div class="card">
+  <svg data-coverage-chart class="chart"></svg>
+  <div class="slider-block" style="margin-top:1rem;">
+    <label>
+      <span>top N</span>
+      <input type="range" data-coverage-slider min="1" max="1000" value="100">
+      <span class="readout" data-coverage-readout>top 100</span>
+    </label>
+    <div class="summary" data-coverage-summary></div>
+  </div>
+</div>
+
+<h2>Top of the review queue</h2>
+<p>
+  The most-mentioned PICs that aren't auto-resolved by the pipeline,
+  sorted by total occurrence across HE, H2020, and FP7. Each row is one
+  curation decision worth making. Click a ROR id to open it on
+  <a href="https://ror.org">ror.org</a>.
+</p>
+<div data-top-table></div>
+
+<h2>AI-assisted review</h2>
+<div data-ai-review></div>
+
+<h2>Resolution rules used by the pipeline</h2>
+<p>
+  The resolver tries strategies in priority order and tags the chosen one
+  on each output row. Counts below are the number of resolutions tagged
+  with that <code>source</code> in the current build. The strategy names
+  map to specific match rules; see
+  <a href="organizations-pipeline.md">organizations-pipeline.md</a> for the
+  full catalog.
+</p>
+<div data-source-table></div>
+
+</main>
+
+<footer class="site">
+  Built from <code>output/summary.json</code> + <code>tmp/.../review_queue.csv</code> +
+  <code>overrides/ai_review/top_3000.yaml</code>.
+  Regenerate with <code>just docs</code>.
+</footer>
+
+<script src="data.js"></script>
+<script src="script.js"></script>
+<script>
+// Page-specific renderers (table_counts + source_table) live here so they
+// stay close to the markup that needs them.
+(function () {
+  function fmt(n) { return Number(n).toLocaleString("en-US"); }
+
+  function renderTableCounts() {
+    const root = document.querySelector("[data-table-counts]");
+    if (!root) return;
+    const tc = (window.DATA && window.DATA.summary && window.DATA.summary.table_counts) || {};
+    const groups = [
+      {
+        title: "Raw imports",
+        keys: [
+          ["cordis_projects", "CORDIS projects"],
+          ["cordis_participants", "CORDIS participant rows"],
+          ["openaire_orgs", "OpenAIRE orgs"],
+          ["ror_orgs", "ROR registry orgs"],
+          ["community_orgs", "community orgs"],
+          ["community_awards", "community awards"],
+          ["community_award_participants", "community award participants"]
+        ]
+      },
+      {
+        title: "Derived candidates",
+        keys: [
+          ["openaire_pic_ror_matches", "OpenAIRE PIC↔ROR candidates"],
+          ["participant_pic_ror_matches", "Participant PIC↔ROR candidates"],
+          ["community_pic_ror_observations", "Community observations"],
+          ["community_pic_ror_matches", "Community matches"],
+          ["suspicious_community_orgs", "Suspicious community orgs"]
+        ]
+      },
+      {
+        title: "Final mapping",
+        keys: [
+          ["pic_ror_resolutions", "PIC → ROR resolutions"],
+          ["awards_best", "Awards (best per project)"],
+          ["award_participants_best", "Award participants (best)"]
+        ]
+      }
+    ];
+    const html = groups.map(g => {
+      const rows = g.keys
+        .filter(([k]) => tc[k] != null)
+        .map(([k, label]) =>
+          "<tr><td class=name>" + label + "</td><td><code>" + k + "</code></td>" +
+          "<td class=num>" + fmt(tc[k]) + "</td></tr>"
+        ).join("");
+      if (!rows) return "";
+      return "<h3>" + g.title + "</h3>" +
+        "<table class=data><thead><tr><th>Description</th><th>Table</th><th class=num>Rows</th></tr></thead>" +
+        "<tbody>" + rows + "</tbody></table>";
+    }).join("");
+    root.innerHTML = html || '<p class="muted small">No table counts found in summary.json.</p>';
+  }
+
+  function renderSourceTable() {
+    const root = document.querySelector("[data-source-table]");
+    if (!root) return;
+    const src = (window.DATA && window.DATA.summary && window.DATA.summary.resolution_source) || {};
+    const entries = Object.entries(src).sort((a, b) => b[1] - a[1]);
+    if (!entries.length) {
+      root.innerHTML = '<p class="muted small">No resolution_source counts in summary.json.</p>';
+      return;
+    }
+    const total = entries.reduce((acc, [, n]) => acc + n, 0);
+    root.innerHTML =
+      "<table class=data><thead><tr><th>Strategy</th><th class=num>Resolutions</th><th class=num>%</th></tr></thead><tbody>" +
+      entries.map(([k, n]) =>
+        "<tr><td><code>" + k + "</code></td>" +
+        "<td class=num>" + fmt(n) + "</td>" +
+        "<td class=num muted>" + ((n / total) * 100).toFixed(1) + "%</td></tr>"
+      ).join("") +
+      "</tbody></table>";
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    renderTableCounts();
+    renderSourceTable();
+  });
+})();
+</script>
+</body>
+</html>

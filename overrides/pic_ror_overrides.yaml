@@ -1,0 +1,27 @@
+# Manual PIC -> ROR overrides.
+#
+# This file is hand-curated and uploaded to Zenodo alongside the machine-generated
+# `pic_ror_resolutions.csv`. Consumers (e.g. invenio-vocabularies' CORDIS award
+# import) merge it on top of the resolutions file: manual entries win, and an
+# empty `ror` explicitly leaves the PIC unresolved (the pipeline's guess, if
+# any, is dropped).
+#
+# Entry shape:
+#
+#   - pic: "<pic identifier>"     # required
+#     ror: "<ror id>"             # required, empty string = leave unresolved
+#     name: "<display name>"      # editor affordance only; not consumed
+#     note: "<why>"               # explanatory; not consumed
+#
+# Examples (uncomment and edit):
+#
+# - pic: "999996549"
+#   ror: "01ggx4157"
+#   name: "CERN — European Organization for Nuclear Research"
+#   note: "Promoted from `review`; OpenAIRE record was missing the ROR pid."
+#
+# - pic: "888777666"
+#   ror: ""
+#   name: "Some defunct subsidiary"
+#   note: "Pipeline matched the parent group; we only want exact PIC matches."
+

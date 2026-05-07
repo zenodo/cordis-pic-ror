@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cordis-pic-ror · curation workflow</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site">
+  <div class="inner">
+    <a class="brand" href="index.html">cordis-pic-ror</a>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="curation.html">Curation</a>
+      <a href="data.html">Numbers</a>
+    </nav>
+    <a class="gh" href="https://github.com/zenodo/cordis-pic-ror" target="_blank" rel="noopener">github →</a>
+  </div>
+</header>
+
+<main>
+
+<section class="hero">
+  <h1>Manual curation workflow</h1>
+  <p class="lede">
+    The pipeline applies only <span class="pill high">high</span> and
+    <span class="pill medium">medium</span> confidence matches automatically.
+    Everything weaker is held back for a human to verify. This page walks
+    through the loop from "pipeline finished a run" to "new Zenodo version
+    published".
+  </p>
+</section>
+
+<h2>What needs human review</h2>
+<div class="grid-2">
+  <div class="card">
+    <h3><span class="pill review">review</span> &nbsp;Pipeline made a guess</h3>
+    <p>
+      The resolver had some evidence (a fuzzy name match, a token-sort name
+      hit, an ambiguous direct OpenAIRE link) but not enough to call it
+      automatic. The PIC is in <code>pic_ror_resolutions</code> with
+      <code>confidence = "review"</code>. The reviewer either promotes the
+      guess to an override or leaves the PIC unresolved with an empty
+      <code>ror</code>.
+    </p>
+  </div>
+  <div class="card">
+    <h3><span class="pill skip">missing</span> &nbsp;No pipeline candidate at all</h3>
+    <p>
+      The resolver couldn't link the PIC to any ROR. Usually OpenAIRE
+      doesn't carry that PIC, the institution lacks a public website, or
+      the legal name doesn't match a ROR record's aliases closely enough.
+      The reviewer looks the institution up by hand (legal name, country,
+      website) and writes a fresh override entry.
+    </p>
+  </div>
+</div>
+
+<h2>Why frequency matters</h2>
+<p>
+  CORDIS participation is heavy-tailed. A handful of major institutions
+  (CNRS, Max Planck, Wageningen, …) account for thousands of unresolved
+  appearances; a long tail of one-off SMEs accounts for the rest.
+  <code>review_queue.py</code> joins <code>cordis_participants</code> with
+  <code>pic_ror_resolutions</code> and emits one row per
+  not-auto-resolved PIC, sorted by total occurrence count across HE +
+  H2020 + FP7. The Numbers page has a slider that lets you eyeball the
+  diminishing-returns curve directly.
+</p>
+
+<h2>Run the loop</h2>
+<pre><code># 1. Re-run the pipeline against the latest source dumps.
+just pipeline                  # produces tmp/org-pipeline/organizations.sqlite + exports
+
+# 2. Refresh the consumer-ready outputs.
+just export                      # output/pic_mapping.csv (+ .jsonl + summary.json)
+
+# 3. Generate the manual-review queue.
+just review-queue              # writes tmp/.../review_queue.csv
+
+# 4. Open review_queue.csv in your spreadsheet of choice. Walk top-down.
+#    Each row carries: pic, count, country, short_name, legal_name,
+#    website_url, openaire_alt_names, openaire_external_ids,
+#    pipeline_ror, pipeline_confidence, pipeline_source.
+#
+# 5. For each kept decision, append to overrides/pic_ror_overrides.yaml.
+#    The schema is below.
+
+# 6. Commit overrides/pic_ror_overrides.yaml. Re-run `just export` so the
+#    new override is merged into output/pic_mapping.csv.
+# 7. Upload output/pic_mapping.csv as a new version of the Zenodo record.</code></pre>
+
+<h2>The override schema</h2>
+<pre><code>- pic: "999996549"
+  ror: "01ggx4157"                # bare ROR id; "" = leave unresolved
+  name: "European Organization for Nuclear Research (CERN)"   # editor affordance
+  note: "Promoted from `review`; OpenAIRE was missing the ROR pid."
+
+- pic: "888777666"
+  ror: ""
+  name: "Some defunct subsidiary"
+  note: "Pipeline matched the parent group; we want exact matches only."</code></pre>
+<p>
+  The consumer-side loader reads only <code>pic</code> and <code>ror</code>.
+  <code>name</code> and <code>note</code> exist for the human editor; they're
+  ignored downstream. A row with empty <code>ror</code> explicitly leaves
+  the PIC unresolved; it removes the pipeline's guess from the auto-resolved
+  set, even if the pipeline had picked something for it.
+</p>
+
+<h2>AI-assisted bootstrap</h2>
+<p>
+  The first 3000 rows of the queue have already been run through an
+  AI-assisted review pass. The decisions live at
+  <code>overrides/ai_review/top_3000.yaml</code> (see the
+  <a href="https://github.com/zenodo/cordis-pic-ror/tree/main/overrides/ai_review">README in that directory</a>).
+  Each entry carries <code>source: ai-assisted</code> and a
+  <code>reasoning</code> string explaining what was checked. They are
+  <em>not</em> auto-merged into <code>pic_ror_overrides.yaml</code>; the
+  human reviewer triages them first.
+</p>
+<div data-ai-review></div>
+<div class="callout">
+  The agents ran a strict pass first (require a confident, dedicated ROR
+  for the exact subsidiary), then a relaxed pass over the strict-pass
+  unresolved entries (accept the parent group's ROR when the subsidiary
+  itself isn't in ROR). Generalized entries are flagged in their
+  <code>reasoning</code> with the literal string
+  <code>"Generalized to parent: …"</code>, so they can be filtered or
+  re-reviewed.
+</div>
+
+<h2>What stays unresolved</h2>
+<p>Four patterns account for most unresolved entries after both passes:</p>
+<ul>
+  <li>
+    Small consultancies, regional development agencies, and one-off
+    startups simply have no ROR record. ROR is research-org focused, and
+    these entities aren't registered.
+  </li>
+  <li>
+    Wrong-country subsidiaries. When the parent group has a ROR in country
+    X but the CORDIS participant is the country-Y subsidiary with no
+    dedicated ROR, accepting the country-X ROR would mis-attribute the
+    affiliation.
+  </li>
+  <li>
+    Faculty or department PICs whose parent could plausibly be one of
+    several institutions (joint research units, dual-affiliated labs).
+    Picking one parent is a real editorial judgment, not something the AI
+    should decide unilaterally.
+  </li>
+  <li>
+    Independent foundations and agencies that ROR hasn't registered yet
+    (some EU-level NGOs, regional grid operators, national
+    air-navigation services). The entity exists, ROR just doesn't carry
+    it.
+  </li>
+</ul>
+
+</main>
+
+<footer class="site">
+  Built from <code>output/summary.json</code> + <code>tmp/.../review_queue.csv</code> +
+  <code>overrides/ai_review/top_3000.yaml</code>.
+  Regenerate with <code>just docs</code>.
+</footer>
+
+<script src="data.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

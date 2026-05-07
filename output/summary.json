@@ -1,0 +1,55 @@
+{
+  "community_label_quality": {
+    "no_ror": 3056,
+    "self_consistent": 5843,
+    "suspicious": 46
+  },
+  "db": "tmp/org-pipeline/organizations.sqlite",
+  "resolution_confidence": {
+    "high": 8021,
+    "medium": 3141,
+    "review": 7554
+  },
+  "resolution_source": {
+    "community_repeat": 5,
+    "community_single": 9,
+    "community_supported": 156,
+    "exact_name": 774,
+    "fuzzy_name": 904,
+    "openaire_ambiguous_domain": 176,
+    "openaire_ambiguous_exact_name": 48,
+    "openaire_ambiguous_external": 44,
+    "openaire_ambiguous_fuzzy_name": 1,
+    "openaire_direct": 7865,
+    "openaire_domain": 3173,
+    "openaire_domain_fuzzy_name": 1571,
+    "openaire_domain_name": 1287,
+    "openaire_external": 13,
+    "openaire_external_domain": 8,
+    "openaire_external_name": 2,
+    "openaire_fuzzy_alias_country": 244,
+    "openaire_fuzzy_name": 667,
+    "openaire_name_country": 238,
+    "openaire_token_sort_name": 7,
+    "participant_fuzzy_name": 627,
+    "participant_name_country": 890,
+    "participant_token_sort_name": 7
+  },
+  "table_counts": {
+    "award_participants_best": 446851,
+    "awards_best": 80953,
+    "community_award_participants": 36121,
+    "community_awards": 2822,
+    "community_orgs": 8945,
+    "community_pic_ror_matches": 893,
+    "community_pic_ror_observations": 2757,
+    "cordis_participants": 446851,
+    "cordis_projects": 80880,
+    "openaire_orgs": 448161,
+    "openaire_pic_ror_matches": 26825,
+    "participant_pic_ror_matches": 2757,
+    "pic_ror_resolutions": 18716,
+    "ror_orgs": 122774,
+    "suspicious_community_orgs": 46
+  }
+}

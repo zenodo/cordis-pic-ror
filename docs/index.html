@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cordis-pic-ror · overview</title>
+<meta name="description" content="Map European Commission PIC identifiers to ROR identifiers, so research tools can attach proper organisation affiliations to CORDIS-funded outputs.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site">
+  <div class="inner">
+    <a class="brand" href="index.html">cordis-pic-ror</a>
+    <nav>
+      <a href="index.html">Overview</a>
+      <a href="curation.html">Curation</a>
+      <a href="data.html">Numbers</a>
+    </nav>
+    <a class="gh" href="https://github.com/zenodo/cordis-pic-ror" target="_blank" rel="noopener">github →</a>
+  </div>
+</header>
+
+<main>
+
+<section class="hero">
+  <h1>From CORDIS PICs to ROR identifiers</h1>
+  <p class="lede">
+    EU-funded research projects identify their participants by a 9-digit
+    Participant Identification Code, or <strong>PIC</strong>. Academic
+    outputs cite organisations by the persistent identifiers in the
+    Research Organization Registry (<strong>ROR</strong>). This pipeline
+    maps PICs to RORs, so any tool that knows a project's PIC can look up
+    the canonical ROR-backed organisation. Click any item below for more.
+  </p>
+</section>
+
+<div data-stats class="grid-3"></div>
+
+<div class="diagram">
+
+  <section class="d-stage stage-source">
+    <h3>Sources</h3>
+
+    <details class="d-item">
+      <summary>
+        <span class="d-item-name">CORDIS</span>
+        <span class="d-item-meta">
+          <span data-count="cordis_participants">…</span> participations ·
+          <span data-count="cordis_projects">…</span> projects
+        </span>
+      </summary>
+      <p>
+        The European Commission's
+        <a href="https://cordis.europa.eu/" target="_blank" rel="noopener">CORDIS portal</a>
+        publishes XML dumps of EU-funded research projects. Each project
+        record lists its participating organisations identified by PIC. The
+        pipeline reads three archives covering the major framework
+        programmes: Horizon Europe, Horizon 2020, and FP7. CORDIS is the
+        source of the participation records the pipeline aims to map.
+      </p>
+    </details>
+
+    <details class="d-item">
+      <summary>
+        <span class="d-item-name">OpenAIRE Graph · OpenOrgs</span>
+        <span class="d-item-meta">
+          <span data-count="openaire_orgs">…</span> organisations
+        </span>
+      </summary>
+      <p>
+        OpenAIRE's organisation graph sits on top of
+        <a href="https://orgs.openaire.eu/" target="_blank" rel="noopener">OpenOrgs</a>,
+        the deduplicated registry that consolidates organisations across
+        funder portals (CORDIS, NIH, NSF, and so on) and other sources. Each
+        OpenOrgs record carries a stable identifier alongside many external
+        IDs (PIC, ROR, GRID, ISNI, Wikidata, Crossref Funder), making it
+        the single richest source of evidence for cross-walking PIC to ROR.
+        When a record carries both a PIC and a ROR, the linkage can be
+        taken directly. The wider
+        <a href="https://graph.openaire.eu/" target="_blank" rel="noopener">OpenAIRE Graph</a>
+        wraps OpenOrgs in research-output context (publications, datasets,
+        software) the pipeline doesn't currently use.
+      </p>
+    </details>
+
+    <details class="d-item">
+      <summary>
+        <span class="d-item-name">ROR</span>
+        <span class="d-item-meta">
+          <span data-count="ror_orgs">…</span> organisations
+        </span>
+      </summary>
+      <p>
+        The
+        <a href="https://ror.org/" target="_blank" rel="noopener">Research Organization Registry</a>
+        is the open registry for research organisations. Each entry has a
+        persistent ROR identifier alongside name aliases, websites,
+        country, and external IDs. ROR is the destination format every
+        mapping points at.
+      </p>
+    </details>
+
+    <details class="d-item">
+      <summary>
+        <span class="d-item-name">Zenodo communities</span>
+        <span class="d-item-meta">
+          <span data-count="community_orgs">…</span> organisations ·
+          <span data-count="community_awards">…</span> EU-project communities
+        </span>
+      </summary>
+      <p>
+        <a href="https://zenodo.org/" target="_blank" rel="noopener">Zenodo</a>
+        communities are curated collections of research records, often
+        organised by funded project. Some EU-project communities maintain
+        organisation metadata for their participants, recording PIC and ROR
+        side by side. The pipeline uses this as supporting evidence when
+        other strategies are uncertain.
+      </p>
+    </details>
+  </section>
+
+  <div class="d-arrow"><span class="d-arrow-glyph">▼</span></div>
+
+  <section class="d-stage stage-derive">
+    <h3>Match candidates</h3>
+    <p class="d-stage-intro">
+      Six strategies score candidate PIC&nbsp;↔&nbsp;ROR pairs. Each strategy
+      emits zero or more candidates per PIC; the resolver in the next stage
+      weighs all of them and picks one ROR.
+    </p>
+
+    <details class="d-item">
+      <summary>
+        <span class="d-item-name">Direct OpenAIRE link</span>
+        <span class="d-item-meta">
+          <span data-count="openaire_pic_ror_matches">…</span> candidates
+        </span>
+      </summary>
+      <p>
+        When an OpenOrgs record carries both a PIC and a ROR, the pipeline
+        takes the linkage directly. OpenOrgs has already done the matching
+        work, so this is the strongest signal available. Most
+        high-confidence resolutions come from this strategy.
+      </p>
+    </details>
+
+    <details class="d-item">
+      <summary>
+        <span class="d-item-name">External-identifier overlap</span>
+      </summary>
+      <p>
+        OpenOrgs records often carry GRID, ISNI, Wikidata, or
+        Crossref-Funder identifiers alongside a PIC. ROR records carry the
+        same external IDs. When the two sides reference an identical
+        external identifier, the organisations are the same; the pipeline
+        pulls the matching ROR through that shared id.
+      </p>
+    </details>
+
+    <details class="d-item">
+      <summary>
+        <span class="d-item-name">Website-domain match</span>
+      </summary>
+      <p>
+        ROR records list each organisation's primary domain. CORDIS
+        participant rows include a website URL. When the two domains match
+        (e.g. <code>cnrs.fr</code>), it's strong evidence the participant is
+        the same organisation as the ROR record. Ambiguous domains
+        (university portals shared across faculties, generic provider
+        domains) are filtered out.
+      </p>
+    </details>
+
+    <details class="d-item">
+      <summary>
+        <span class="d-item-name">Exact name + country</span>
+      </summary>
+      <p>
+        The normalised legal name plus country code uniquely identifies
+        many organisations. The pipeline normalises capitalisation, strips
+        legal-form suffixes (SA, GmbH, Ltd), and matches against ROR's name
+        and alias fields. When a single ROR org in the right country
+        matches the normalised CORDIS name, it's a confident match.
+      </p>
+    </details>
+
+    <details class="d-item">
+      <summary>
+        <span class="d-item-name">Fuzzy name</span>
+        <span class="d-item-meta">
+          <span data-count="participant_pic_ror_matches">…</span> candidates from CORDIS participants
+        </span>
+      </summary>
+      <p>
+        For names that don't match exactly, the pipeline uses
+        <a href="https://github.com/rapidfuzz/RapidFuzz" target="_blank" rel="noopener">RapidFuzz</a>
+        to score similarity (token-sort, token-set, partial-ratio) within
+        the same country. A high similarity threshold keeps false positives
+        down, but fuzzy matches are still tagged for human review by
+        default. They handle typos, language variants, and abbreviated
+        legal forms that the exact-match strategy misses.
+      </p>
+    </details>
+
+    <details class="d-item">
+      <summary>
+        <span class="d-item-name">Community-curated evidence</span>
+        <span class="d-item-meta">
+          <span data-count="community_pic_ror_observations">…</span> observations ·
+          <span data-count="community_pic_ror_matches">…</span> aggregated
+        </span>
+      </summary>
+      <p>
+        Some Zenodo communities maintain organisation metadata for their EU
+        projects, including PIC and ROR. When a community has explicitly
+        matched a PIC to a ROR, the pipeline counts that as supporting
+        evidence. A single community linkage is weak on its own (one
+        curator's opinion). Multiple independent communities agreeing on
+        the same PIC&nbsp;↔&nbsp;ROR is strong.
+      </p>
+    </details>
+  </section>
+
+  <div class="d-arrow"><span class="d-arrow-glyph">▼</span></div>
+
+  <section class="d-stage stage-resolve">
+    <h3>PIC → ROR mapping <span class="d-count-inline"><span data-count="pic_ror_resolutions">…</span> rows</span></h3>
+    <p class="d-stage-intro">
+      The resolver picks one ROR per PIC and tags it with a confidence
+      level. The tag drives whether downstream tools apply the mapping
+      automatically or hand it to a human reviewer.
+    </p>
+
+    <details class="d-item">
+      <summary>
+        <span class="d-item-name"><span class="pill high">high</span></span>
+        <span class="d-item-meta"><span data-conf="high">…</span> resolutions</span>
+      </summary>
+      <p>
+        OpenOrgs already links the PIC to exactly one ROR (most of these),
+        or a community match agrees with another strategy on the same ROR.
+        Applied automatically.
+      </p>
+      <p class="d-strategies">
+        <span class="d-strategies-label">From</span>
+        <span class="tag">Direct OpenAIRE link</span>
+        <span class="tag">Community + another match</span>
+      </p>
+    </details>
+
+    <details class="d-item">
+      <summary>
+        <span class="d-item-name"><span class="pill medium">medium</span></span>
+        <span class="d-item-meta"><span data-conf="medium">…</span> resolutions</span>
+      </summary>
+      <p>
+        Two strategies pick the same ROR (for example website domain and
+        exact name both point at one ROR), or OpenOrgs has several
+        candidate RORs and another strategy picks one of them. Applied
+        automatically; worth spot-checking when you care about a specific
+        organisation.
+      </p>
+      <p class="d-strategies">
+        <span class="d-strategies-label">From combinations of</span>
+        <span class="tag">Website-domain match</span>
+        <span class="tag">Exact name + country</span>
+        <span class="tag">External-identifier overlap</span>
+        <span class="tag">Fuzzy name</span>
+      </p>
+    </details>
+
+    <details class="d-item">
+      <summary>
+        <span class="d-item-name"><span class="pill review">review</span></span>
+        <span class="d-item-meta"><span data-conf="review">…</span> resolutions</span>
+      </summary>
+      <p>
+        Only one strategy fired, with nothing else backing it up. The
+        match is plausible but it's a single signal, so it's
+        <strong>not</strong> applied automatically; held back for a human.
+      </p>
+      <p class="d-strategies">
+        <span class="d-strategies-label">From a single</span>
+        <span class="tag">Website-domain match</span>
+        <span class="tag">Exact name + country</span>
+        <span class="tag">Fuzzy name</span>
+        <span class="tag">Community-curated evidence</span>
+      </p>
+    </details>
+  </section>
+
+  <div class="d-fork" aria-hidden="true">
+    <svg viewBox="0 0 320 56" preserveAspectRatio="none">
+      <path d="M 160 0 V 18 M 160 18 H 60 V 56 M 160 18 H 260 V 56" />
+      <polygon points="60,52 56,44 64,44" />
+      <polygon points="260,52 256,44 264,44" />
+    </svg>
+    <span class="d-fork-label d-fork-left">high + medium</span>
+    <span class="d-fork-label d-fork-right">review</span>
+  </div>
+
+  <div class="d-row">
+    <section class="d-stage stage-publish">
+      <h3>Automatic mapping</h3>
+      <p class="d-mini">
+        Slim CSV (~830 KB) with one row per PIC, published to Zenodo.
+      </p>
+    </section>
+
+    <section class="d-stage stage-curation">
+      <h3>Human curation</h3>
+      <p class="d-mini">
+        Reviewer walks a frequency-ranked queue and writes decisions to a
+        YAML file in this repo. <a href="curation.html">More →</a>
+      </p>
+    </section>
+  </div>
+
+  <div class="d-merge" aria-hidden="true">
+    <svg viewBox="0 0 320 56" preserveAspectRatio="none">
+      <path d="M 60 0 V 38 H 260 V 0 M 160 38 V 56" />
+      <polygon points="160,52 156,44 164,44" />
+    </svg>
+  </div>
+
+  <div class="d-arrow"><span class="d-arrow-glyph">▼</span><span class="d-arrow-label">via Zenodo</span></div>
+
+  <section class="d-stage stage-consumer">
+    <h3>Downstream tools</h3>
+    <p class="d-mini">
+      Research-data platforms (first
+      <a href="https://zenodo.org/" target="_blank" rel="noopener">Zenodo</a>
+      itself, then anyone else) fetch the published Zenodo record and look
+      up PIC&nbsp;→&nbsp;ROR at runtime. Every pipeline run publishes as a
+      new version of the same record, so consumers always see the latest
+      mapping.
+    </p>
+  </section>
+
+</div><!-- /.diagram -->
+
+
+<h2>Read more</h2>
+<ul>
+  <li><a href="curation.html">Manual curation workflow</a> walks through how
+    a reviewer goes through the queue and writes overrides.</li>
+  <li><a href="data.html">Current numbers</a> shows the current top-N
+    unresolved PICs, a coverage curve, and AI-review statistics.</li>
+  <li><a href="organizations-pipeline.md">Reference docs</a> are the dense
+    schema-and-rules reference for everyone who wants to read the code.</li>
+</ul>
+
+</main>
+
+<footer class="site">
+  Built from <code>output/summary.json</code>, the review queue, and
+  <code>overrides/ai_review/top_3000.yaml</code>. Regenerate with
+  <code>just docs</code>.
+</footer>
+
+<script src="data.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
